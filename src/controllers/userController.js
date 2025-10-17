@@ -95,10 +95,99 @@ const getUserById = async (req, res) => {
       .json({ message: "Lỗi server khi lấy thông tin người dùng", error });
   }
 };
+// 🟢 Lấy thông tin cá nhân (người dùng đã đăng nhập)
+const getMyProfile = async (req, res) => {
+  // Middleware 'protect' đã lấy thông tin user và gán vào req.user
+  res.status(200).json(req.user);
+};
 
+// 🟢 Cập nhật thông tin cá nhân
+const updateMyProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.avatar = req.body.avatar || user.avatar;
+
+      const updatedUser = await user.save();
+
+      res.status(200).json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        avatar: updatedUser.avatar,
+      });
+    } else {
+      res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi cập nhật hồ sơ", error });
+  }
+};
+
+// === CHỨC NĂNG CỦA ADMIN ===
+
+// 🟢 Lấy tất cả người dùng (chỉ Admin)
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}).select("-password");
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi lấy danh sách người dùng", error });
+  }
+};
+
+
+// 🟢 Cập nhật người dùng bất kỳ (chỉ Admin)
+const updateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      user.name = req.body.name || user.name;
+      // Admin có thể thay đổi role
+      user.role = req.body.role || user.role; 
+
+      const updatedUser = await user.save();
+      res.status(200).json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+      });
+    } else {
+      res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+  } catch (error) {
+     res.status(500).json({ message: "Lỗi server khi cập nhật người dùng", error });
+  }
+};
+
+
+// 🟢 Xóa người dùng (chỉ Admin)
+const deleteUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if(user) {
+            await user.deleteOne(); // Hoặc user.remove() ở Mongoose cũ
+            res.status(200).json({ message: "Người dùng đã được xóa."});
+        } else {
+            res.status(404).json({ message: "Không tìm thấy người dùng."});
+        }
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi server khi xóa người dùng", error });
+    }
+}
 
 module.exports = {
   registerUser,
   loginUser,
   getUserById,
+  getMyProfile,
+  updateMyProfile,
+  getAllUsers,
+  updateUser,
+  deleteUser
 };
