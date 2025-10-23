@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db.js");
 const router = require("./src/routes");
 
-dotenv.config(); 
+dotenv.config();
 
 const app = express();
 
@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 connectDB();
 
 // Mount routes
-app.use("/api", router); 
+app.use("/api", router);
 
 // Route test nhanh
 app.get("/", (req, res) => {
