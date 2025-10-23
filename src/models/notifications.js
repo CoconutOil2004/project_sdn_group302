@@ -12,6 +12,7 @@ const NotificationSchema = new mongoose.Schema(
     isRead: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
   },
+  // mkjk
   { collection: "notifications" }
 );
 
