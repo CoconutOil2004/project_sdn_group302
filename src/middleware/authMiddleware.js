@@ -44,5 +44,13 @@ const isAdmin = (req, res, next) => {
     res.status(403).json({ message: "Yêu cầu quyền Admin." });
   }
 };
+// Middleware để kiểm tra vai trò Manager
+const isManager = (req, res, next) => {
+  if (req.user && req.user.role === "manager") {
+    next();
+  } else {
+    res.status(403).json({ message: "Yêu cầu quyền Manager." });
+  }
+};
 
-module.exports = { protect, isAdmin };
+module.exports = {isManager, protect, isAdmin };

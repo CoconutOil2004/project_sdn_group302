@@ -8,17 +8,17 @@ const {
     getRequestsStats
 } = require('../controllers/controllerRequests'); 
 
-const router = express.Router();
+const requestRouter = express.Router();
 
 // Route THỐNG KÊ (phải đặt trước route '/')
-router.route('/stats').get(getRequestsStats);
+requestRouter.route('/stats').get(getRequestsStats);
 
-router.route('/')
+requestRouter.route('/')
     .get(getAllRequests) // GET /api/requests
     .post(createRequest); // POST /api/requests
 
 // Route cập nhật trạng thái
-router.route('/:id/status')
+requestRouter.route('/:id/status')
     .put(updateRequestStatus); // PUT /api/requests/:id/status
 
-module.exports = router;
+module.exports = requestRouter;
