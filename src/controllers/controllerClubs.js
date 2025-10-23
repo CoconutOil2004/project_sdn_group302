@@ -69,4 +69,4 @@ const approveClub = async (req, res) => {
     res.status(500).json({ message: "Lỗi khi duyệt CLB", error });
   }
 };
-module.exports = { getAllClubs, getClubDetailbyId };
+module.exports = { getAllClubs, getClubDetailbyId, createClub };
