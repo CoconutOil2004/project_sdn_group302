@@ -11,6 +11,11 @@ const UserSchema = new mongoose.Schema(
       enum: ["admin", "manager", "student"],
       default: "student",
     },
+    status: {
+      type: String,
+      enum: ["active", "blocked"],
+      default: "active",
+    },
     joinedClubs: [
       {
         clubId: { type: mongoose.Schema.Types.ObjectId, ref: "Club" },

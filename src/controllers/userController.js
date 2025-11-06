@@ -2,6 +2,64 @@
 const User = require("../models/users");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const multer = require('multer');
+const path = require('path');
+
+// Cấu hình multer cho việc upload file
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // giới hạn 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+      return cb(new Error('Chỉ cho phép file ảnh!'), false);
+    }
+    cb(null, true);
+  }
+}).single('avatar');
+
+// 🟢 Upload avatar
+const uploadAvatar = async (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Vui lòng chọn file ảnh' });
+    }
+
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+      }
+
+      // Cập nhật đường dẫn avatar trong database
+      const avatarUrl = `http://localhost:9999/uploads/${req.file.filename}`;
+      user.avatar = avatarUrl;
+      await user.save();
+
+      res.json({ 
+        message: 'Upload avatar thành công',
+        avatarUrl
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Lỗi khi cập nhật avatar', error });
+    }
+  });
+};
 
 // 🟢 Đăng ký người dùng mới
 const registerUser = async (req, res) => {
@@ -49,7 +107,12 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Email hoặc mật khẩu không đúng." });
     }
 
-    // 2. So sánh mật khẩu
+    // 2. Kiểm tra trạng thái tài khoản
+    if (user.status === 'blocked') {
+      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin." });
+    }
+
+    // 3. So sánh mật khẩu
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Email hoặc mật khẩu không đúng." });
@@ -95,6 +158,29 @@ const getUserById = async (req, res) => {
       .json({ message: "Lỗi server khi lấy thông tin người dùng", error });
   }
 };
+// 🟢 Đổi mật khẩu
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+
+    // Kiểm tra mật khẩu cũ
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Mật khẩu hiện tại không đúng." });
+    }
+
+    // Mã hóa mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ message: "Đổi mật khẩu thành công!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi đổi mật khẩu", error });
+  }
+};
+
 // 🟢 Lấy thông tin cá nhân (người dùng đã đăng nhập)
 const getMyProfile = async (req, res) => {
   // Middleware 'protect' đã lấy thông tin user và gán vào req.user
@@ -132,7 +218,9 @@ const updateMyProfile = async (req, res) => {
 // 🟢 Lấy tất cả người dùng (chỉ Admin)
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select("-password");
+    const users = await User.find({})
+      .select("-password")
+      .select("name email role status");
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: "Lỗi server khi lấy danh sách người dùng", error });
@@ -147,8 +235,12 @@ const updateUser = async (req, res) => {
 
     if (user) {
       user.name = req.body.name || user.name;
-      // Admin có thể thay đổi role
-      user.role = req.body.role || user.role; 
+      // Admin có thể thay đổi role và status
+      user.role = req.body.role || user.role;
+      // Cập nhật trạng thái nếu được cung cấp
+      if (req.body.status) {
+        user.status = req.body.status;
+      }
 
       const updatedUser = await user.save();
       res.status(200).json({
@@ -156,6 +248,7 @@ const updateUser = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         role: updatedUser.role,
+        status: updatedUser.status,
       });
     } else {
       res.status(404).json({ message: "Không tìm thấy người dùng" });
@@ -189,5 +282,7 @@ module.exports = {
   updateMyProfile,
   getAllUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  changePassword,
+  uploadAvatar
 };
