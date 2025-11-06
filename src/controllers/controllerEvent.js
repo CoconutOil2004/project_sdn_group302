@@ -22,7 +22,77 @@ function formatDate(date) {
 // };
 const getAllEvents = async (req, res) => {
     try {
-        const events = await Event.find().lean();
+        const {
+            page: pageParam,
+            limit: limitParam,
+            sortBy: sortByParam,
+            sortOrder: sortOrderParam,
+            clubId,
+            title,
+            dateFrom,
+            dateTo
+        } = req.query;
+
+        const filter = {};
+
+        if (clubId) {
+            const clubIds = Array.isArray(clubId)
+                ? clubId
+                : clubId.split(",").map(id => id.trim()).filter(Boolean);
+            const validClubIds = clubIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+            if (validClubIds.length > 0) {
+                filter.clubId = validClubIds.length === 1 ? validClubIds[0] : { $in: validClubIds };
+            }
+        }
+
+        if (title) {
+            filter.title = { $regex: title, $options: "i" };
+        }
+
+        if (dateFrom || dateTo) {
+            const dateFilter = {};
+
+            if (dateFrom) {
+                const from = new Date(dateFrom);
+                if (!Number.isNaN(from.getTime())) {
+                    dateFilter.$gte = from;
+                }
+            }
+
+            if (dateTo) {
+                const to = new Date(dateTo);
+                if (!Number.isNaN(to.getTime())) {
+                    dateFilter.$lte = to;
+                }
+            }
+
+            if (Object.keys(dateFilter).length > 0) {
+                filter.date = dateFilter;
+            }
+        }
+
+        const allowedSortFields = ["createdAt", "date", "title", "location"];
+        const sortField = allowedSortFields.includes(sortByParam) ? sortByParam : "createdAt";
+        const sortDirection = sortOrderParam === "asc" ? 1 : -1;
+        const sort = { [sortField]: sortDirection };
+
+        const page = Number.parseInt(pageParam, 10);
+        const limit = Number.parseInt(limitParam, 10);
+        const shouldPaginate = Number.isInteger(page) && page > 0 && Number.isInteger(limit) && limit > 0;
+
+        const eventQuery = Event.find(filter).sort(sort);
+
+        if (shouldPaginate) {
+            eventQuery.skip((page - 1) * limit).limit(limit);
+        }
+
+        const eventsPromise = eventQuery.lean();
+        const countPromise = shouldPaginate ? Event.countDocuments(filter) : Promise.resolve(null);
+
+        const [events, totalItems] = await Promise.all([
+            eventsPromise,
+            countPromise
+        ]);
 
         const formattedEvents = events.map(event => ({
             ...event,
@@ -33,6 +103,14 @@ const getAllEvents = async (req, res) => {
                 joinedAt: formatDate(p.joinedAt),
             })),
         }));
+
+        if (shouldPaginate && typeof totalItems === "number") {
+            const totalPages = Math.max(Math.ceil(totalItems / limit), 1);
+            res.set("X-Total-Count", totalItems.toString());
+            res.set("X-Total-Pages", totalPages.toString());
+            res.set("X-Page", page.toString());
+            res.set("X-Limit", limit.toString());
+        }
 
         res.status(200).json(formattedEvents);
     } catch (error) {
