@@ -11,11 +11,17 @@ router.post("/login", userController.loginUser);
 
 
 // === Private Routes (Dành cho người dùng đã đăng nhập) ===
-// ❗️❗️ Route tĩnh '/profile' phải được đặt LÊN TRÊN route động '/:id'
+// ❗️❗️ Route tĩnh '/profile' và '/change-password' phải được đặt LÊN TRÊN route động '/:id'
 router
   .route("/profile")
   .get(protect, userController.getMyProfile)
   .put(protect, userController.updateMyProfile);
+
+// Route đổi mật khẩu
+router.put("/change-password", protect, userController.changePassword);
+
+// Route upload avatar
+router.post("/upload-avatar", protect, userController.uploadAvatar);
 
 
 // === Admin Routes (Chỉ Admin được truy cập) ===
