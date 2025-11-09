@@ -6,8 +6,8 @@ const User = require("../models/users");
 const getAllClubs = async (req, res) => {
   try {
     const clubs = await Club.find({ status: "approved" })
-      .populate("managerId", "name email")
-      .select("name description category logo status createdAt");
+      .populate("managerId", "name email _id")
+      .select("name description category logo status createdAt managerId");
 
     res.status(200).json(clubs);
   } catch (error) {
@@ -111,10 +111,26 @@ const addMemberToClub = async (req, res) => {
     });
   }
 };
+// 🟢 Lấy clubs của manager (bao gồm cả pending và approved)
+const getMyClubs = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const clubs = await Club.find({ managerId: userId })
+      .populate("managerId", "name email _id")
+      .select("name description category logo status createdAt managerId")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(clubs);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi lấy danh sách CLB", error });
+  }
+};
+
 module.exports = {
   getAllClubs,
   getClubDetailbyId,
   createClub,
   approveClub,
   addMemberToClub,
+  getMyClubs,
 };
