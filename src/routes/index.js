@@ -9,7 +9,6 @@ const requestRouter = require("./requests");
 const router = express.Router();
 router.use("/clubs", clubRouter);
 router.use("/events", eventRouter);
-
 router.use("/messages", messagesRouter);
 router.use("/notifications", notificationRoutes);
 router.use("/requests", requestRouter);
