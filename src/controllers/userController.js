@@ -6,34 +6,39 @@ const multer = require("multer");
 const path = require("path");
 const { upload } = require("../utils/Upload");
 
-// 🟢 Upload avatar
+// 🟢 Upload avatar lên Cloudinary
 const uploadAvatar = async (req, res) => {
-  upload(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ message: err.message });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ message: "Vui lòng chọn file ảnh" });
-    }
-
+  upload.single("avatar")(req, res, async (err) => {
     try {
+      if (err) {
+        console.error("❌ Multer error:", err);
+        return res.status(400).json({ message: err.message });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Vui lòng chọn file ảnh" });
+      }
+
+      const avatarUrl = req.file.path;
+
       const user = await User.findById(req.user._id);
       if (!user) {
         return res.status(404).json({ message: "Không tìm thấy người dùng" });
       }
 
-      // Cập nhật đường dẫn avatar trong database
-      const avatarUrl = `http://localhost:9999/uploads/${req.file.filename}`;
       user.avatar = avatarUrl;
       await user.save();
 
-      res.json({
-        message: "Upload avatar thành công",
+      res.status(200).json({
+        message: "✅ Upload avatar thành công!",
         avatarUrl,
       });
     } catch (error) {
-      res.status(500).json({ message: "Lỗi khi cập nhật avatar", error });
+      console.error("🔥 Upload error:", error);
+      res.status(500).json({
+        message: "Lỗi server khi upload ảnh",
+        error: error.message,
+      });
     }
   });
 };
@@ -88,11 +93,9 @@ const loginUser = async (req, res) => {
 
     // 2. Kiểm tra trạng thái tài khoản
     if (user.status === "blocked") {
-      return res
-        .status(403)
-        .json({
-          message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.",
-        });
+      return res.status(403).json({
+        message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.",
+      });
     }
 
     // 3. So sánh mật khẩu
