@@ -6,9 +6,9 @@ const Request = require('../models/requests');
 const populateRequestMinimal = (query) => {
     return query
         // Lấy tên Student/User và loại bỏ _id của nó
-        .populate('studentId', 'name -_id') 
+        .populate('studentId', 'name -_id')
         // Lấy tên Club và loại bỏ _id của nó
-        .populate('clubId', 'name -_id');      
+        .populate('clubId', 'name -_id');
 };
 
 // @desc    Lấy tất cả requests
@@ -57,9 +57,9 @@ exports.createRequest = async (req, res) => {
         }
 
         let request = await Request.create({ studentId, clubId, message });
-        
+
         // Populate request vừa tạo trước khi trả về
-        request = await populateRequestMinimal(Request.findById(request._id)); 
+        request = await populateRequestMinimal(Request.findById(request._id));
 
         res.status(201).json({ success: true, data: request });
     } catch (err) {
@@ -91,7 +91,7 @@ exports.updateRequestStatus = async (req, res) => {
         if (!request) {
             return res.status(404).json({ success: false, error: 'Request không tồn tại' });
         }
-        
+
         // Populate request sau khi cập nhật
         request = await populateRequestMinimal(Request.findById(request._id));
 
@@ -113,24 +113,24 @@ exports.getRequestsStats = async (req, res) => {
                 },
             },
             { $sort: { "_id.clubId": 1, "_id.status": 1 } },
-            
+
             // JOIN với collection clubs
             {
                 $lookup: {
                     // Dùng tên collection Club đã được sửa trong Model clubs.js (ví dụ: 'Project.clubs')
-                    from: 'Project.clubs', 
+                    from: 'Project.clubs',
                     localField: '_id.clubId',
                     foreignField: '_id',
                     as: 'clubInfo'
                 }
             },
             { $unwind: "$clubInfo" },
-            
+
             // CHỈ LẤY các trường cần thiết (Tên Club, Status, Count)
             {
                 $project: {
                     _id: 0,
-                    clubName: "$clubInfo.name", 
+                    clubName: "$clubInfo.name",
                     status: "$_id.status",
                     count: 1
                 }
