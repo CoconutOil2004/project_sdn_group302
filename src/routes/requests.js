@@ -5,20 +5,26 @@ const {
     getAllRequests,
     createRequest,
     updateRequestStatus,
-    getRequestsStats
+    getRequestsStats,
+    getMyClubRequests
 } = require('../controllers/controllerRequests'); 
+const { protect } = require('../middleware/authMiddleware');
 
 const requestRouter = express.Router();
 
 // Route THỐNG KÊ (phải đặt trước route '/')
-requestRouter.route('/stats').get(getRequestsStats);
+requestRouter.route('/stats').get(protect, getRequestsStats);
 
+// Route lấy requests của manager (phải đặt trước route '/')
+requestRouter.route('/my-clubs').get(protect, getMyClubRequests);
+
+// Tạo request mới (cần đăng nhập)
 requestRouter.route('/')
-    .get(getAllRequests) // GET /api/requests
-    .post(createRequest); // POST /api/requests
+    .get(protect, getAllRequests) // GET /api/requests
+    .post(protect, createRequest); // POST /api/requests
 
-// Route cập nhật trạng thái
+// Route cập nhật trạng thái (cần đăng nhập và là manager/admin)
 requestRouter.route('/:id/status')
-    .put(updateRequestStatus); // PUT /api/requests/:id/status
+    .put(protect, updateRequestStatus); // PUT /api/requests/:id/status
 
 module.exports = requestRouter;
