@@ -22,6 +22,9 @@ exports.getAllRequests = async (req, res) => {
         if (req.query.status) {
             filter.status = req.query.status;
         }
+        if (req.query.studentId) {
+            filter.studentId = req.query.studentId;
+        }
 
         let query = Request.find(filter);
         query = populateRequestMinimal(query);
