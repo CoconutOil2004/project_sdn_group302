@@ -74,7 +74,6 @@ const addMemberToClub = async (req, res) => {
   try {
     const { clubId, userId } = req.body;
 
-    // 1️⃣ Kiểm tra tồn tại CLB và người dùng
     const club = await Club.findById(clubId);
     const user = await User.findById(userId);
 
@@ -82,7 +81,6 @@ const addMemberToClub = async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "Không tìm thấy người dùng." });
 
-    // 2️⃣ Kiểm tra nếu user đã là thành viên CLB
     const alreadyMember = club.members.some(
       (m) => m.userId.toString() === userId
     );

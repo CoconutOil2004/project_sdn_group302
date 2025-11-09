@@ -1,6 +1,4 @@
-// models/Event.js
 const mongoose = require("mongoose");
-
 const EventSchema = new mongoose.Schema(
   {
     clubId: {
@@ -12,6 +10,7 @@ const EventSchema = new mongoose.Schema(
     description: { type: String },
     date: { type: Date, required: true },
     location: { type: String },
+    image: { type: String, required: true },
     participants: [
       {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

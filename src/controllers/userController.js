@@ -2,32 +2,9 @@
 const User = require("../models/users");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const multer = require('multer');
-const path = require('path');
-
-// Cấu hình multer cho việc upload file
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // giới hạn 5MB
-  },
-  fileFilter: (req, file, cb) => {
-    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-      return cb(new Error('Chỉ cho phép file ảnh!'), false);
-    }
-    cb(null, true);
-  }
-}).single('avatar');
+const multer = require("multer");
+const path = require("path");
+const { upload } = require("../utils/Upload");
 
 // 🟢 Upload avatar
 const uploadAvatar = async (req, res) => {
@@ -37,13 +14,13 @@ const uploadAvatar = async (req, res) => {
     }
 
     if (!req.file) {
-      return res.status(400).json({ message: 'Vui lòng chọn file ảnh' });
+      return res.status(400).json({ message: "Vui lòng chọn file ảnh" });
     }
 
     try {
       const user = await User.findById(req.user._id);
       if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        return res.status(404).json({ message: "Không tìm thấy người dùng" });
       }
 
       // Cập nhật đường dẫn avatar trong database
@@ -51,12 +28,12 @@ const uploadAvatar = async (req, res) => {
       user.avatar = avatarUrl;
       await user.save();
 
-      res.json({ 
-        message: 'Upload avatar thành công',
-        avatarUrl
+      res.json({
+        message: "Upload avatar thành công",
+        avatarUrl,
       });
     } catch (error) {
-      res.status(500).json({ message: 'Lỗi khi cập nhật avatar', error });
+      res.status(500).json({ message: "Lỗi khi cập nhật avatar", error });
     }
   });
 };
@@ -104,18 +81,26 @@ const loginUser = async (req, res) => {
     // 1. Tìm người dùng theo email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Email hoặc mật khẩu không đúng." });
+      return res
+        .status(400)
+        .json({ message: "Email hoặc mật khẩu không đúng." });
     }
 
     // 2. Kiểm tra trạng thái tài khoản
-    if (user.status === 'blocked') {
-      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin." });
+    if (user.status === "blocked") {
+      return res
+        .status(403)
+        .json({
+          message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.",
+        });
     }
 
     // 3. So sánh mật khẩu
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Email hoặc mật khẩu không đúng." });
+      return res
+        .status(400)
+        .json({ message: "Email hoặc mật khẩu không đúng." });
     }
 
     // 3. Tạo JSON Web Token (JWT)
@@ -223,10 +208,11 @@ const getAllUsers = async (req, res) => {
       .select("name email role status");
     res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi lấy danh sách người dùng", error });
+    res
+      .status(500)
+      .json({ message: "Lỗi server khi lấy danh sách người dùng", error });
   }
 };
-
 
 // 🟢 Cập nhật người dùng bất kỳ (chỉ Admin)
 const updateUser = async (req, res) => {
@@ -254,25 +240,26 @@ const updateUser = async (req, res) => {
       res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
   } catch (error) {
-     res.status(500).json({ message: "Lỗi server khi cập nhật người dùng", error });
+    res
+      .status(500)
+      .json({ message: "Lỗi server khi cập nhật người dùng", error });
   }
 };
 
-
 // 🟢 Xóa người dùng (chỉ Admin)
 const deleteUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if(user) {
-            await user.deleteOne(); // Hoặc user.remove() ở Mongoose cũ
-            res.status(200).json({ message: "Người dùng đã được xóa."});
-        } else {
-            res.status(404).json({ message: "Không tìm thấy người dùng."});
-        }
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi server khi xóa người dùng", error });
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      await user.deleteOne(); // Hoặc user.remove() ở Mongoose cũ
+      res.status(200).json({ message: "Người dùng đã được xóa." });
+    } else {
+      res.status(404).json({ message: "Không tìm thấy người dùng." });
     }
-}
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi xóa người dùng", error });
+  }
+};
 
 module.exports = {
   registerUser,
@@ -284,5 +271,5 @@ module.exports = {
   updateUser,
   deleteUser,
   changePassword,
-  uploadAvatar
+  uploadAvatar,
 };

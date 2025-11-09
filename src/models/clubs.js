@@ -10,7 +10,7 @@ const ClubSchema = new mongoose.Schema(
       enum: ["Technology", "Sports", "Arts", "Volunteer", "Other"],
       default: "Other",
     },
-    logo: { type: String, default: "" },
+    logo: { type: String, required: true },
     managerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
