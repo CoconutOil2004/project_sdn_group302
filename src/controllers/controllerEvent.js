@@ -193,7 +193,7 @@ const addParticipant = async (req, res) => {
             return res.status(404).json({ message: "Event not found" });
         }
 
-        // Kiểm tra xem user đã tham gia chưa
+        // Kiểm tra xem user đã tham gia 
         const alreadyJoined = event.participants.some(
             (p) => p.userId.toString() === userId
         );
