@@ -179,36 +179,57 @@ const createEvent = async (req, res) => {
 
 // 4. Thêm participant
 const addParticipant = async (req, res) => {
-    const { id } = req.params;
-    const { userId } = req.body;
+    const { id } = req.params;     // eventId
+    const { userId } = req.body;   // userId từ body
 
     if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(userId)) {
         return res.status(400).json({ message: "Invalid eventId or userId format" });
     }
 
     try {
-        const event = await Event.findByIdAndUpdate(
-            id,
-            {
-                $push: {
-                    participants: {
-                        userId,
-                        joinedAt: new Date()
-                    }
-                }
-            },
-            { new: true }
-        );
-
+        // Tìm sự kiện
+        const event = await Event.findById(id);
         if (!event) {
             return res.status(404).json({ message: "Event not found" });
         }
 
-        res.status(200).json(event);
+        // Kiểm tra xem user đã tham gia chưa
+        const alreadyJoined = event.participants.some(
+            (p) => p.userId.toString() === userId
+        );
+
+        if (alreadyJoined) {
+            return res.status(400).json({ message: "Bạn đã tham gia sự kiện này rồi." });
+        }
+
+        // Thêm người tham gia mới
+        event.participants.push({
+            userId,
+            joinedAt: new Date()
+        });
+
+        await event.save();
+
+        const updatedEvent = await Event.findById(id)
+            .populate("participants.userId", "name email")
+            .lean();
+
+        updatedEvent.date = formatDate(updatedEvent.date);
+        updatedEvent.createdAt = formatDate(updatedEvent.createdAt);
+        if (updatedEvent.participants?.length > 0) {
+            updatedEvent.participants = updatedEvent.participants.map(p => ({
+                ...p,
+                joinedAt: formatDate(p.joinedAt)
+            }));
+        }
+
+        return res.status(200).json(updatedEvent);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error(err);
+        res.status(500).json({ message: "Lỗi server khi tham gia sự kiện." });
     }
 };
+
 
 
 // 5. Xóa sự kiện
