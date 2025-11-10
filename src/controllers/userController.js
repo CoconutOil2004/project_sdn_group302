@@ -169,10 +169,22 @@ const changePassword = async (req, res) => {
   }
 };
 
-// 🟢 Lấy thông tin cá nhân (người dùng đã đăng nhập)
+// 🟢 Lấy thông tin cá nhân (người dùng đã đăng nhập) kèm các CLB đã tham gia
 const getMyProfile = async (req, res) => {
-  // Middleware 'protect' đã lấy thông tin user và gán vào req.user
-  res.status(200).json(req.user);
+  try {
+    const user = await User.findById(req.user._id)
+      .select("-password")
+      .populate({
+        path: "joinedClubs.clubId",
+        select: "name category logo status",
+      });
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server khi lấy hồ sơ", error });
+  }
 };
 
 // 🟢 Cập nhật thông tin cá nhân
