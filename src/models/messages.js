@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const MessageSchema = new mongoose.Schema(
   {
+    threadKey: {
+      type: String,
+      required: true,
+      index: true,
+      trim: true,
+    },
     type: {
       type: String,
       enum: ["DIRECT", "USER_CLUB", "CLUB_BROADCAST", "EVENT"],
@@ -52,6 +58,7 @@ const MessageSchema = new mongoose.Schema(
 );
 
 MessageSchema.index({
+  threadKey: 1,
   type: 1,
   "participants.userId": 1,
   "participants.clubId": 1,

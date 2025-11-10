@@ -5,6 +5,7 @@ const Club = require("../models/clubs");
 const Event = require("../models/events");
 
 const ALLOWED_TYPES = ["DIRECT", "USER_CLUB", "CLUB_BROADCAST", "EVENT"];
+const MAX_USER_SUGGESTIONS = 100;
 
 const createHttpError = (status, message) => {
   const err = new Error(message);
@@ -92,6 +93,28 @@ const buildThreadKey = (type, participants) => {
   return `${type}:${tokens.join("|")}`;
 };
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildUserSearchCondition = (search) => {
+  if (!search || typeof search !== "string") {
+    return null;
+  }
+
+  const trimmed = search.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const regex = new RegExp(escapeRegex(trimmed), "i");
+    return {
+      $or: [{ name: regex }, { email: regex }],
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
 const populateMessageQuery = (query) =>
   query
     .populate("sender", "name avatar role")
@@ -134,7 +157,10 @@ const formatMessageDoc = (doc) => {
     return null;
   }
 
-  const message = doc.toObject({ depopulate: false });
+  const message =
+    typeof doc.toObject === "function"
+      ? doc.toObject({ depopulate: false })
+      : { ...doc };
   const formatted = {
     _id: message._id,
     threadKey: message.threadKey,
@@ -433,20 +459,27 @@ const createOrGetThread = async (req, res) => {
 
     let populatedMessage = null;
 
-    if (!content && attachments.length === 0 && !existingThread) {
-      throw createHttpError(422, "Tin nhắn đầu tiên phải có content hoặc attachments");
+    let messageContent = content;
+    let messageIsSystem = meta && meta.isSystem;
+    let shouldCreateMessage = Boolean(content) || attachments.length > 0;
+
+    if (!existingThread && !shouldCreateMessage) {
+      const initiatorName = req.user && req.user.name ? req.user.name : "hệ thống";
+      messageContent = `Cuộc trò chuyện được tạo bởi ${initiatorName}.`;
+      messageIsSystem = true;
+      shouldCreateMessage = true;
     }
 
-    if (content || attachments.length > 0) {
+    if (shouldCreateMessage) {
       populatedMessage = await createMessageDocument({
         threadKey,
         type,
         participants,
         senderId: userId,
-        content,
+        content: messageContent,
         attachments,
         baseMeta: baseMeta,
-        isSystem: meta && meta.isSystem,
+        isSystem: messageIsSystem,
       });
     }
 
@@ -697,6 +730,44 @@ const listThreads = async (req, res) => {
   }
 };
 
+const listAvailableUsers = async (req, res) => {
+  try {
+    const currentUserId = getCurrentUserId(req);
+    const { search, limit: limitParam } = req.query;
+
+    const searchCondition = buildUserSearchCondition(search);
+    const limit = Number.parseInt(limitParam, 10) > 0 ? Number.parseInt(limitParam, 10) : 50;
+    const normalizedLimit = Math.min(limit, MAX_USER_SUGGESTIONS);
+
+    const match = {
+      _id: { $ne: currentUserId },
+      status: { $ne: "blocked" },
+    };
+
+    if (searchCondition) {
+      match.$or = searchCondition.$or;
+    }
+
+    const users = await User.find(match)
+      .select("_id name email avatar role")
+      .sort({ name: 1 })
+      .limit(normalizedLimit);
+
+    return res.status(200).json({
+      success: true,
+      data: users.map((user) => ({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || "",
+        role: user.role,
+      })),
+    });
+  } catch (error) {
+    return handleErrorResponse(res, error);
+  }
+};
+
 const markRead = async (req, res) => {
   try {
     const userId = getCurrentUserId(req);
@@ -796,4 +867,5 @@ module.exports = {
   markRead,
   pin,
   unpin,
+  listAvailableUsers,
 };
