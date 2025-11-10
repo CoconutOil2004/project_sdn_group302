@@ -23,8 +23,18 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.10.1",
     "morgan": "^1.10.0",
+<<<<<<< HEAD
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0"
+=======
+<<<<<<< Updated upstream
+    "multer": "^2.0.2"
+=======
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^7.0.10"
+>>>>>>> Stashed changes
+>>>>>>> 5a2097e (feat(notification): Tích hợp thông báo và gửi email)
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

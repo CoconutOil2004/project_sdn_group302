@@ -1,8 +1,17 @@
 // src/controllers/controllerRequests.js
 
 const Request = require('../models/requests');
+<<<<<<< HEAD
 const Club = require('../models/clubs');
 const User = require('../models/users');
+=======
+<<<<<<< Updated upstream
+=======
+const Club = require('../models/clubs');
+const User = require('../models/users');
+const { createNotification, sendRequestStatusEmail } = require('../utils/notification.util');
+>>>>>>> Stashed changes
+>>>>>>> 5a2097e (feat(notification): Tích hợp thông báo và gửi email)
 
 // Hàm trợ giúp để populate đầy đủ thông tin
 const populateRequestFull = (query) => {
@@ -136,6 +145,25 @@ exports.createRequest = async (req, res) => {
         // Populate request vừa tạo trước khi trả về
         request = await populateRequestFull(Request.findById(request._id)); 
 
+        const clubName = request.clubId.name;
+
+        // Gửi thông báo tới Manager 
+        const managerId = request.clubId.managerId._id;
+        const managerContent = `Có yêu cầu tham gia mới từ ${request.studentId.name} vào CLB ${clubName}.`;
+        await createNotification(managerId, managerContent, 'REQUEST_RECEIVED', { 
+            requestId: request._id, 
+            clubId: clubId,
+            clubName: clubName
+        });
+
+        // Gửi thông báo tới Student
+        const studentContent = `Yêu cầu tham gia CLB ${clubName} của bạn đã được gửi đi. Vui lòng theo dõi thông báo hoặc mail để biết kết quả.`;
+        await createNotification(studentId, studentContent, 'REQUEST_SENT', { 
+            requestId: request._id, 
+            clubId: clubId,
+            clubName: clubName
+        });
+
         res.status(201).json({ success: true, data: request });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
@@ -224,9 +252,32 @@ exports.updateRequestStatus = async (req, res) => {
             }
         }
         
+<<<<<<< Updated upstream
         // Populate request sau khi cập nhật
         request = await populateRequestFull(Request.findById(request._id));
 
+<<<<<<< HEAD
+=======
+        res.status(200).json({ success: true, data: request });
+=======
+        request = await populateRequestFull(Request.findById(request._id));
+
+        const studentId = request.studentId._id;
+        const clubName = request.clubId.name;
+        const managerAction = newStatus === 'accepted' ? 'CHẤP THUẬN' : 'TỪ CHỐI';
+
+        // Thông báo kết quả cho Student
+        const studentContent = `Yêu cầu tham gia CLB ${clubName} của bạn đã được ${managerAction}. Vui lòng kiểm tra mail để biết kết quả.`;
+        await createNotification(studentId, studentContent, 'REQUEST_STATUS_UPDATE', {
+            requestId: request._id,
+            clubId: request.clubId._id,
+            status: newStatus
+        });
+        
+        // Gửi mail thông báo kết quả 
+        await sendRequestStatusEmail(studentId, clubName, newStatus);
+
+>>>>>>> 5a2097e (feat(notification): Tích hợp thông báo và gửi email)
         res.status(200).json({ 
             success: true, 
             data: request,
@@ -234,6 +285,10 @@ exports.updateRequestStatus = async (req, res) => {
                 ? 'Đã chấp nhận request và thêm thành viên vào club' 
                 : 'Đã cập nhật trạng thái request'
         });
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+>>>>>>> 5a2097e (feat(notification): Tích hợp thông báo và gửi email)
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
