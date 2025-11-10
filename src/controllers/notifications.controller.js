@@ -7,7 +7,7 @@ const Notification = require("../models/notifications");
  */
 const getNotifications = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const notifications = await Notification.find({ userId })
       .sort({ createdAt: -1 })
@@ -25,6 +25,30 @@ const getNotifications = async (req, res) => {
 };
 
 /**
+ * @desc    Lấy số lượng thông báo chưa đọc (Hàm MỚI)
+ * @route   GET /api/notifications/unread-count
+ * @access  Private
+ */
+const getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const count = await Notification.countDocuments({ 
+      userId, 
+      isRead: false 
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { count }
+    });
+  } catch (error) {
+    console.error("Error getting unread count:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+/**
  * @desc    Đánh dấu một notification là đã đọc (Fail notification)
  * @route   PATCH /api/notifications/:id/read
  * @access  Private
@@ -32,7 +56,7 @@ const getNotifications = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
+      { _id: req.params.id, userId: req.user._id },
       { isRead: true },
       { new: true }
     );
@@ -58,7 +82,7 @@ const markAsRead = async (req, res) => {
 const markAllAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
-      { userId: req.user.id, isRead: false },
+      { userId: req.user._id, isRead: false },
       { isRead: true }
     );
 
@@ -103,4 +127,5 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
+  getUnreadCount
 };
