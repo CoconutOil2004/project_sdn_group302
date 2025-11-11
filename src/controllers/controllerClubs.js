@@ -37,25 +37,24 @@ const getClubDetailbyId = async (req, res) => {
 // 🟢 Tạo CLB mới (chỉ Manager được tạo)
 const createClub = async (req, res) => {
   try {
-    const { name, description, category, logo, managerId } = req.body;
-
-    // Người tạo (có thể là student). Nếu không truyền managerId, dùng user hiện tại
+    const { name, description, category, managerId } = req.body;
     const creatorId = managerId || (req.user?._id ?? managerId);
+
+    // ✅ Lấy URL từ file upload Cloudinary
+    const logoUrl = req.file?.path || "";
 
     const newClub = new Club({
       name,
       description,
       category,
-      logo,
+      logo: logoUrl, // dùng ảnh từ Cloudinary
       managerId: creatorId,
-      // Người tạo trở thành thành viên ngay lập tức
       members: [{ userId: creatorId, joinedAt: new Date() }],
-      status: "pending", // admin sẽ duyệt
+      status: "pending",
     });
 
     await newClub.save();
 
-    // Đồng bộ vào danh sách joinedClubs của user tạo
     if (creatorId) {
       const user = await User.findById(creatorId);
       if (user) {
@@ -69,51 +68,58 @@ const createClub = async (req, res) => {
       }
     }
 
-    res
-      .status(201)
-      .json({ message: "Tạo CLB thành công, chờ duyệt!", newClub });
+    res.status(201).json({
+      message: "Tạo CLB thành công, chờ duyệt!",
+      newClub,
+    });
   } catch (error) {
-    // Trả lỗi rõ ràng nếu validate thất bại
     const status = error?.name === "ValidationError" ? 400 : 500;
-    res.status(status).json({ message: "Lỗi khi tạo CLB", error: error.message });
+    res
+      .status(status)
+      .json({ message: "Lỗi khi tạo CLB", error: error.message });
   }
 };
 
-// 🟡 Cập nhật thông tin CLB (admin hoặc manager của CLB)
 const updateClub = async (req, res) => {
   try {
-    const clubId = req.params.id;
-    const { name, description, category, logo } = req.body;
-    const club = await Club.findById(clubId);
-    if (!club) return res.status(404).json({ message: "Không tìm thấy CLB" });
+    const { id } = req.params;
+    const { name, description, category } = req.body;
 
-    // Quyền: admin hoặc manager của club
-    const isOwner = req.user && club.managerId.toString() === req.user._id.toString();
-    const isAdmin = req.user && req.user.role === "admin";
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: "Không có quyền cập nhật CLB này" });
+    const club = await Club.findById(id);
+    if (!club) {
+      return res.status(404).json({ message: "Không tìm thấy CLB" });
     }
 
-    if (typeof name === "string") club.name = name;
-    if (typeof description === "string") club.description = description;
-    if (typeof category === "string") club.category = category;
-    if (typeof logo === "string") club.logo = logo;
+    // ✅ Nếu có file upload, lấy URL Cloudinary
+    const newLogo = req.file ? req.file.path : club.logo;
+
+    club.name = name || club.name;
+    club.description = description || club.description;
+    club.category = category || club.category;
+    club.logo = newLogo;
 
     await club.save();
-    res.status(200).json({ message: "Cập nhật CLB thành công", club });
-  } catch (error) {
-    res.status(500).json({ message: "Lỗi khi cập nhật CLB", error });
+
+    res.status(200).json({
+      message: "Cập nhật CLB thành công",
+      club,
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ message: "Lỗi khi cập nhật CLB", error: err.message });
   }
 };
 
-// 🔴 Xóa CLB (admin hoặc manager của CLB)
 const deleteClub = async (req, res) => {
   try {
     const clubId = req.params.id;
     const club = await Club.findById(clubId);
     if (!club) return res.status(404).json({ message: "Không tìm thấy CLB" });
 
-    const isOwner = req.user && club.managerId.toString() === req.user._id.toString();
+    const isOwner =
+      req.user && club.managerId.toString() === req.user._id.toString();
     const isAdmin = req.user && req.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Không có quyền xóa CLB này" });
@@ -140,7 +146,11 @@ const approveClub = async (req, res) => {
     // Promote managerId user to role 'manager' nếu chưa phải
     if (club.managerId) {
       const managerUser = await User.findById(club.managerId);
-      if (managerUser && managerUser.role !== "manager" && managerUser.role !== "admin") {
+      if (
+        managerUser &&
+        managerUser.role !== "manager" &&
+        managerUser.role !== "admin"
+      ) {
         managerUser.role = "manager";
         await managerUser.save();
       }
@@ -221,7 +231,9 @@ const getMyClubs = async (req, res) => {
 
     res.status(200).json(clubs);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi lấy danh sách CLB", error });
+    res
+      .status(500)
+      .json({ message: "Lỗi server khi lấy danh sách CLB", error });
   }
 };
 
@@ -238,7 +250,9 @@ const getClubsForAdmin = async (req, res) => {
       .sort({ createdAt: -1 });
     res.status(200).json(clubs);
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server khi lấy danh sách CLB (admin)", error });
+    res
+      .status(500)
+      .json({ message: "Lỗi server khi lấy danh sách CLB (admin)", error });
   }
 };
 
