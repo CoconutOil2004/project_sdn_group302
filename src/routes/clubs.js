@@ -14,6 +14,7 @@ const {
   getClubMembers,
 } = require("../controllers/controllerClubs");
 const { protect, isAdmin } = require("../middleware/authMiddleware");
+const { upload } = require("../utils/Upload");
 
 const clubRouter = express.Router();
 clubRouter.get("/", getAllClubs);
@@ -23,12 +24,12 @@ clubRouter.get("/mine", protect, getMyMemberClubs);
 clubRouter.get("/admin", protect, isAdmin, getClubsForAdmin);
 clubRouter.get("/:id/members", protect, getClubMembers);
 clubRouter.get("/:id", getClubDetailbyId);
-clubRouter.post("/", protect, createClub);
+clubRouter.post("/", protect, upload.single("logo"), createClub);
 // Align path with frontend service: /clubs/:id/approve
 clubRouter.put("/:id/approve", protect, isAdmin, approveClub);
 clubRouter.put("/:id/reject", protect, isAdmin, rejectClub);
 // Update/Delete club
-clubRouter.put("/:id", protect, updateClub);
+clubRouter.put("/:id", protect, upload.single("logo"), updateClub);
 clubRouter.delete("/:id", protect, deleteClub);
 clubRouter.post("/add-member", addMemberToClub);
 module.exports = clubRouter;
