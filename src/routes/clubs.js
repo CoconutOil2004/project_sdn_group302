@@ -10,6 +10,8 @@ const {
   getClubsForAdmin,
   updateClub,
   deleteClub,
+  getMyMemberClubs,
+  getClubMembers,
 } = require("../controllers/controllerClubs");
 const { protect, isAdmin } = require("../middleware/authMiddleware");
 const { upload } = require("../utils/Upload");
@@ -17,8 +19,10 @@ const { upload } = require("../utils/Upload");
 const clubRouter = express.Router();
 clubRouter.get("/", getAllClubs);
 clubRouter.get("/my-clubs", protect, getMyClubs); // Route này phải đặt trước /:id
+clubRouter.get("/mine", protect, getMyMemberClubs);
 // Admin list with optional status filter
 clubRouter.get("/admin", protect, isAdmin, getClubsForAdmin);
+clubRouter.get("/:id/members", protect, getClubMembers);
 clubRouter.get("/:id", getClubDetailbyId);
 clubRouter.post("/", protect, upload.single("logo"), createClub);
 // Align path with frontend service: /clubs/:id/approve

@@ -232,9 +232,9 @@ const ensureThreadAccess = async ({ user, type, participants, action }) => {
 
   if (type === "USER_CLUB") {
     const clubParticipant = participants.find((participant) => participant.clubId);
-    const userParticipant = participants.find((participant) => participant.userId);
+    const userParticipants = participants.filter((participant) => participant.userId);
 
-    if (!clubParticipant || !userParticipant) {
+    if (!clubParticipant || userParticipants.length === 0) {
       throw createHttpError(422, "USER_CLUB thread yêu cầu userId và clubId");
     }
 
@@ -244,10 +244,13 @@ const ensureThreadAccess = async ({ user, type, participants, action }) => {
       throw createHttpError(404, "Câu lạc bộ không tồn tại");
     }
 
-    const isRequester = userParticipant.userId && userParticipant.userId.equals(userId);
+    const isRequester = userParticipants.some(
+      (participant) => participant.userId && participant.userId.equals(userId)
+    );
     const manager = isClubManager(club, userId);
+    const member = isClubMember(club, userId);
 
-    if (!isAdmin && !isRequester && !manager) {
+    if (!isAdmin && !isRequester && !manager && !member) {
       throw createHttpError(403, "Bạn không có quyền truy cập hội thoại giữa thành viên và câu lạc bộ này");
     }
 
