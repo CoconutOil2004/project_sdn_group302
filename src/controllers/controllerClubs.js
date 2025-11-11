@@ -225,6 +225,125 @@ const getMyClubs = async (req, res) => {
   }
 };
 
+// 🟢 Lấy danh sách CLB người dùng đã tham gia
+const getMyMemberClubs = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate(
+      "joinedClubs.clubId",
+      "name logo category status managerId"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    const clubs =
+      user.joinedClubs
+        ?.filter((entry) => entry && entry.clubId)
+        .map((entry) => ({
+          _id: entry.clubId._id,
+          name: entry.clubId.name,
+          logo: entry.clubId.logo,
+          category: entry.clubId.category,
+          status: entry.clubId.status,
+          managerId: entry.clubId.managerId,
+          joinedAt: entry.joinedAt,
+        })) || [];
+
+    res.status(200).json({ success: true, data: clubs });
+  } catch (error) {
+    res.status(500).json({
+      message: "Lỗi server khi lấy danh sách CLB đã tham gia",
+      error,
+    });
+  }
+};
+
+// 🟢 Lấy danh sách thành viên CLB (chỉ cho admin/manager/thành viên)
+const getClubMembers = async (req, res) => {
+  try {
+    const clubId = req.params.id;
+    const club = await Club.findById(clubId)
+      .populate("members.userId", "name email avatar role status")
+      .select("name logo managerId members");
+
+    if (!club) {
+      return res.status(404).json({ message: "Không tìm thấy CLB." });
+    }
+
+    const requesterId = req.user && req.user._id;
+    const isAdmin = req.user?.role === "admin";
+    const isManager =
+      requesterId &&
+      club.managerId &&
+      club.managerId.toString() === requesterId.toString();
+    const isMember = club.members.some(
+      (member) =>
+        member.userId &&
+        member.userId._id &&
+        requesterId &&
+        member.userId._id.toString() === requesterId.toString()
+    );
+
+    if (!isAdmin && !isManager && !isMember) {
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền xem thành viên của CLB này." });
+    }
+
+    let members = club.members
+      .filter((member) => member.userId)
+      .map((member) => ({
+        _id: member.userId._id,
+        name: member.userId.name,
+        email: member.userId.email,
+        avatar: member.userId.avatar,
+        role: member.userId.role,
+        status: member.userId.status,
+        joinedAt: member.joinedAt,
+      }));
+
+    if (
+      club.managerId &&
+      !members.some((member) => member._id.toString() === club.managerId.toString())
+    ) {
+      const managerUser = await User.findById(club.managerId).select(
+        "name email avatar role status"
+      );
+      if (managerUser) {
+        members = [
+          {
+            _id: managerUser._id,
+            name: managerUser.name,
+            email: managerUser.email,
+            avatar: managerUser.avatar,
+            role: managerUser.role,
+            status: managerUser.status,
+            joinedAt: null,
+          },
+          ...members,
+        ];
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        club: {
+          _id: club._id,
+          name: club.name,
+          logo: club.logo,
+        },
+        members,
+      },
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Lỗi server khi lấy danh sách thành viên CLB", error });
+  }
+};
+
 // 🟢 Admin lấy danh sách CLB với filter theo status
 const getClubsForAdmin = async (req, res) => {
   try {
@@ -253,4 +372,6 @@ module.exports = {
   getClubsForAdmin,
   updateClub,
   deleteClub,
+  getMyMemberClubs,
+  getClubMembers,
 };
